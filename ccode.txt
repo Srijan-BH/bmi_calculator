@@ -1,0 +1,158 @@
+#include <windows.h>
+#include <stdio.h>
+#include <string.h>
+
+#define ID_AGE     101
+#define ID_GENDER  102
+#define ID_WEIGHT  103
+#define ID_HEIGHT  104
+#define ID_CALC    105
+#define ID_RESULT  106
+#define ID_INFO    107
+#define ID_RESET   108
+
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);  //handles events
+
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR args, int ncmdshow)  //event driver progamming
+{
+    WNDCLASS wc = {0};
+    HWND hwnd;
+    MSG msg;
+
+    wc.lpszClassName = "BMIGUI";
+    wc.hInstance = hInst;
+    wc.lpfnWndProc = WndProc;
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+
+    RegisterClass(&wc);
+
+    hwnd = CreateWindow(
+        "BMIGUI",
+        "BMI Calculator - C Windows GUI",
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        300, 150, 450, 420,
+        NULL, NULL, hInst, NULL
+    );
+
+    while(GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+    return 0;
+}
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    static HWND hAge, hGender, hWeight, hHeight, hResult;
+
+    switch(msg)
+    {
+    case WM_CREATE:
+
+        CreateWindow("static","Age:",WS_VISIBLE|WS_CHILD,30,30,120,20,hwnd,NULL,NULL,NULL);
+        hAge = CreateWindow("edit","",WS_VISIBLE|WS_CHILD|WS_BORDER,170,30,150,20,hwnd,(HMENU)ID_AGE,NULL,NULL);
+
+        CreateWindow("static","Gender (M/F):",WS_VISIBLE|WS_CHILD,30,60,120,20,hwnd,NULL,NULL,NULL);
+        hGender = CreateWindow("edit","",WS_VISIBLE|WS_CHILD|WS_BORDER,170,60,150,20,hwnd,(HMENU)ID_GENDER,NULL,NULL);
+
+        CreateWindow("static","Weight (kg):",WS_VISIBLE|WS_CHILD,30,90,120,20,hwnd,NULL,NULL,NULL);
+        hWeight = CreateWindow("edit","",WS_VISIBLE|WS_CHILD|WS_BORDER,170,90,150,20,hwnd,(HMENU)ID_WEIGHT,NULL,NULL);
+
+        CreateWindow("static","Height (cm):",WS_VISIBLE|WS_CHILD,30,120,120,20,hwnd,NULL,NULL,NULL);
+        hHeight = CreateWindow("edit","",WS_VISIBLE|WS_CHILD|WS_BORDER,170,120,150,20,hwnd,(HMENU)ID_HEIGHT,NULL,NULL);
+
+        CreateWindow("button","Calculate BMI",WS_VISIBLE|WS_CHILD,60,170,140,30,hwnd,(HMENU)ID_CALC,NULL,NULL);
+        CreateWindow("button","Reset",WS_VISIBLE|WS_CHILD,220,170,100,30,hwnd,(HMENU)ID_RESET,NULL,NULL);
+
+        CreateWindow("button","BMI Info",WS_VISIBLE|WS_CHILD,140,215,140,30,hwnd,(HMENU)ID_INFO,NULL,NULL);
+
+        hResult = CreateWindow("static","",WS_VISIBLE|WS_CHILD,30,260,380,100,hwnd,(HMENU)ID_RESULT,NULL,NULL);
+
+        break;
+
+    case WM_COMMAND:  //handles button click events
+        switch(LOWORD(wParam))  //wParam contains information about which control triggered the event.
+        {
+        case ID_CALC:
+        {
+            char buf[50], gender;
+            int age;
+            float weight, heightCm, heightM, bmi;
+            char category[50], result[300];
+
+            GetWindowText(hAge, buf, 50);
+            age = atoi(buf);
+
+            GetWindowText(hGender, buf, 50);
+            gender = buf[0];
+
+            // Gender validation
+            if(!((gender == 'M' || gender == 'm' || gender == 'F' || gender == 'f') && buf[1] == '\0'))
+            {
+                MessageBox(hwnd,"Gender must be M or F only","Input Error",MB_ICONERROR);
+                break;
+            }
+
+            GetWindowText(hWeight, buf, 50);
+            weight = atof(buf);
+
+            GetWindowText(hHeight, buf, 50);
+            heightCm = atof(buf);   // converts string → integer.
+
+            if(age <= 0 || weight <= 0 || heightCm <= 0)
+            {
+                MessageBox(hwnd,"Enter valid numeric values","Error",MB_ICONERROR);
+                break;
+            }
+
+            heightM = heightCm / 100;
+            bmi = weight / (heightM * heightM);
+
+            if(bmi < 18.5) strcpy(category,"Underweight");
+            else if(bmi < 25) strcpy(category,"Normal weight");
+            else if(bmi < 30) strcpy(category,"Overweight");
+            else if(bmi <= 35) strcpy(category,"Obese");
+            else strcpy(category,"Extremely Obese");
+
+            sprintf(result,
+                "Age: %d\nGender: %c\nBMI: %.2f\nCategory: %s",
+                age, gender, bmi, category
+            );
+
+            SetWindowText(hResult, result);
+            break;
+        }
+
+        case ID_RESET:
+            SetWindowText(hAge, "");
+            SetWindowText(hGender, "");
+            SetWindowText(hWeight, "");
+            SetWindowText(hHeight, "");
+            SetWindowText(hResult, "");
+            break;
+
+        case ID_INFO:
+            MessageBox(
+                hwnd,
+                "BMI (Body Mass Index)\n\n"
+                "< 18.5  : Underweight\n"
+                "18.5 - 24.9 : Normal\n"
+                "25 - 29.9 : Overweight\n"
+                "30 - 35 : Obese\n"
+                "> 35 : Extremely Obese\n\n"
+                "Healthy Range: 18.5 - 24.9",
+                "BMI Information",
+                MB_OK | MB_ICONINFORMATION
+            );
+            break;
+        }
+        break;
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+    }
+
+    return DefWindowProc(hwnd, msg, wParam, lParam);
+}
